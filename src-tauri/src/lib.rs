@@ -14,8 +14,9 @@ mod operation;
 
 use crate::{
     account::{
-        delete_account, delete_app_id, get_certificates, invalidate_account, list_app_ids,
-        logged_in_as, login_new, login_stored, reset_anisette_state, revoke_certificate,
+        delete_account, delete_app_id, export_certificate, get_certificates, invalidate_account,
+        list_app_ids, logged_in_as, login_new, login_stored, reset_anisette_state,
+        revoke_certificate,
     },
     device::{
         DeviceInfoMutex, PairingCancelToken, cancel_pairing, list_devices, set_selected_device,
@@ -115,6 +116,7 @@ pub fn run() {
             install_sidestore_operation,
             get_certificates,
             revoke_certificate,
+            export_certificate,
             list_app_ids,
             delete_app_id,
             installed_pairing_apps,

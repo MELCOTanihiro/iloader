@@ -130,7 +130,12 @@
     "serial_number": "Serial Number",
     "machine_name": "Machine Name",
     "machine_id": "Machine ID",
-    "revoke": "Revoke"
+    "revoke": "Revoke",
+    "export_password_placeholder": "P12 password",
+    "export": "Export as .p12",
+    "exporting": "Exporting certificate...",
+    "exported_success": "Certificate exported successfully!",
+    "failed_export": "Failed to export certificate"
   },
   "app_ids": {
     "manage": "Manage App IDs",
