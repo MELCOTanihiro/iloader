@@ -17,6 +17,8 @@ export const Certificates = () => {
   const { t } = useTranslation();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [exportPassword, setExportPassword] = useState<string>("");
+  const [exporting, setExporting] = useState<boolean>(false);
   const loadingRef = useRef<boolean>(false);
   const { err } = useError();
 
@@ -51,6 +53,18 @@ export const Certificates = () => {
     },
     [setCertificates, loadCertificates, t],
   );
+
+  const exportCertificate = useCallback(async () => {
+    setExporting(true);
+    const promise = invoke<void>("export_certificate", {
+      password: exportPassword,
+    }).finally(() => setExporting(false));
+    toast.promise(promise, {
+      loading: t("certificates.exporting"),
+      success: t("certificates.exported_success"),
+      error: (e) => err(t("certificates.failed_export"), e),
+    });
+  }, [exportPassword, t, err]);
 
   useEffect(() => {
     loadCertificates();
@@ -109,6 +123,18 @@ export const Certificates = () => {
       >
         {t("common.refresh")}
       </button>
+      <div style={{ marginTop: "1em", display: "flex", gap: "0.5em" }}>
+        <input
+          type="password"
+          placeholder={t("certificates.export_password_placeholder")}
+          value={exportPassword}
+          onChange={(e) => setExportPassword(e.target.value)}
+          style={{ flex: 1 }}
+        />
+        <button onClick={exportCertificate} disabled={exporting}>
+          {t("certificates.export")}
+        </button>
+      </div>
     </>
   );
 };

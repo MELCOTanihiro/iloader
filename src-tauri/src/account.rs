@@ -7,7 +7,10 @@ use isideload::{
         certificates::{CertificatesApi, DevelopmentCertificate},
         developer_session::DeveloperSession,
     },
-    sideload::{SideloaderBuilder, builder::MaxCertsBehavior, sideloader::Sideloader},
+    sideload::{
+        SideloaderBuilder, builder::MaxCertsBehavior, cert_identity::CertificateIdentity,
+        sideloader::Sideloader,
+    },
 };
 use keyring::Entry;
 use rootcause::prelude::*;
@@ -15,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Listener, State, Window};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_store::StoreExt;
 use tracing::debug;
 
@@ -301,6 +305,55 @@ pub async fn revoke_certificate(
         .await?;
 
     Ok(())
+}
+
+// prompt for a location to save the certificate, then export it as a password-protected
+// PKCS#12 (.p12) archive there. The archive contains the certificate's private key, so it
+// is only ever written to disk in response to this explicit user-initiated save.
+#[tauri::command]
+pub async fn export_certificate(
+    password: String,
+    app: AppHandle,
+    sideloader_state: State<'_, SideloaderMutex>,
+) -> Result<(), AppError> {
+    let save_path = app
+        .dialog()
+        .file()
+        .add_filter("PKCS#12 Certificate", &["p12"])
+        .set_file_name("Certificate.p12")
+        .set_title("Export Certificate")
+        .blocking_save_file();
+
+    if let Some(save_path) = save_path
+        && let Some(save_path) = save_path.as_path()
+    {
+        let mut sideloader = SideloaderGuard::take(&sideloader_state)?;
+
+        let team = sideloader.get_mut().get_team().await?;
+        let email = sideloader.get_mut().get_email().to_string();
+        let storage = create_sideloading_storage(&app)?;
+        let dev_session = sideloader.get_mut().get_dev_session();
+
+        let identity = CertificateIdentity::retrieve(
+            "iloader",
+            &email,
+            dev_session,
+            &team,
+            storage.as_ref(),
+            &MaxCertsBehavior::Error,
+        )
+        .await?;
+
+        let p12_bytes = identity.as_p12(&password).await?;
+
+        tokio::fs::write(save_path, &p12_bytes).await.map_err(|e| {
+            AppError::Filesystem("Failed to write certificate file".into(), e.to_string())
+        })?;
+
+        Ok(())
+    } else {
+        Err(AppError::Canceled("Export".into()))
+    }
 }
 
 #[tauri::command]
